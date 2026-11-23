@@ -1,0 +1,80 @@
+rules_version = '2';
+
+// Modelo de dados
+//
+// Utilizador: Firebase Authentication (email + palavra-passe).
+//   O UID gerado pelo Firebase é o ID do documento em users/{uid}.
+//   A palavra-passe NUNCA vai para o Firestore.
+//
+// buttons/{buttonId}                  botões pré-definidos, visíveis para todos
+//   color     string
+//   icon      string
+//   isDefault boolean
+//   name      string
+//   text      string
+//   Criados e editados só na consola Firebase (a app apenas os lê).
+//
+// users/{uid}                         perfil do utilizador
+//   name      string
+//
+// users/{uid}/ubuttons/{buttonId}     botões do utilizador (ID automático)
+//   color     string   ex.: "#4F46E5"
+//   emoji     string   um emoji ou uma palavra
+//   name      string   até 3 palavras
+//   text      string   até 3 palavras
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function validUser(data) {
+      return data.keys().hasOnly(['name'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 80;
+    }
+
+    function validUserButton(data) {
+      return data.keys().hasAll(['color', 'emoji', 'name', 'text'])
+        && data.keys().hasOnly(['color', 'emoji', 'name', 'text'])
+        && data.color is string && data.color.matches('^#[0-9A-Fa-f]{6}$')
+        // emoji: um emoji ou uma palavra (sem espaços)
+        && data.emoji is string && data.emoji.size() > 0 && data.emoji.size() <= 20
+        && data.emoji.matches('^\\S+$')
+        // name e text: 1 a 3 palavras, separadas por um espaço
+        && data.name is string && data.name.size() <= 44
+        && data.name.matches('^\\S+( \\S+){0,2}$')
+        && data.text is string && data.text.size() <= 44
+        && data.text.matches('^\\S+( \\S+){0,2}$');
+    }
+
+    // Botões pré-definidos: qualquer utilizador com sessão lê, ninguém escreve pela app.
+    match /buttons/{buttonId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Perfil: cada utilizador só lê e escreve o seu.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validUser(request.resource.data);
+      allow delete: if false;
+
+      // Botões do utilizador: só o dono lê, cria, edita e elimina.
+      match /ubuttons/{buttonId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validUserButton(request.resource.data);
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

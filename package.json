@@ -1,0 +1,26 @@
+{
+  "name": "vozzi-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-vozzi \"node tests/rules.test.mjs\""
+  },
+  "dependencies": {
+    "firebase": "^13.0.0",
+    "lucide-react": "^1.73.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.3.5"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
+  }
+}
